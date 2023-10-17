@@ -68,7 +68,7 @@ func getMyIP() string {
 
 func updateRecord(apiKey string, domainName string, recordName string, recordSet recordSet) {
 	log.Printf("Updating %s.%s to %+v", recordName, domainName, recordSet)
-	url := fmt.Sprintf("https://dns.api.gandi.net/api/v5/domains/%s/records/%s/%s", domainName, recordName, recordType)
+	url := fmt.Sprintf("https://api.gandi.net/v5/livedns/domains/%s/records/%s/%s", domainName, recordName, recordType)
 
 	recordBytes, err := json.Marshal(recordSet)
 	if err != nil {
@@ -81,7 +81,7 @@ func updateRecord(apiKey string, domainName string, recordName string, recordSet
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.Header.Add("X-Api-Key", apiKey)
+	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", apiKey))
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
