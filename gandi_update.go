@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 )
 
 const (
-	whatsMyIPURL = "http://whatismyip.akamai.com"
-	recordType   = "A"
-	defaultTTL   = 300
+	whatsMyIPv4URL = "http://ipv4.whatismyip.akamai.com"
+	whatsMyIPv6URL = "http://ipv6.whatismyip.akamai.com"
+	defaultTTL     = 300
 )
 
 type recordSet struct {
@@ -23,11 +23,12 @@ type recordSet struct {
 }
 
 func main() {
-	var apiKey, myIP, domainName, recordName string
+	var apiKey, myIPv4, myIPv6, domainName, recordName string
 	var ttl int
 
 	flag.StringVar(&apiKey, "api_key", "", "API key for Gandi LiveDNS")
-	flag.StringVar(&myIP, "ip", getMyIP(), "IP address to set. Default is to get your public IP from Akamai")
+	flag.StringVar(&myIPv4, "ip4", getMyIPv4(), "IPv4 address to set. Default is to get your public IP from Akamai")
+	flag.StringVar(&myIPv6, "ip6", getMyIPv6(), "IPv6 address to set. Default is to get your public IP from Akamai")
 	flag.StringVar(&domainName, "domain_name", "", "Domain name")
 	flag.StringVar(&recordName, "record_name", "", "Record name")
 	flag.IntVar(&ttl, "ttl", defaultTTL, "TTL for the DNS record in seconds")
@@ -43,32 +44,56 @@ func main() {
 		log.Fatal("record_name can't be empty")
 	}
 
-	recordSet := recordSet{
-		Type:   recordType,
-		TTL:    ttl,
-		Values: []string{myIP},
+	if myIPv4 != "" {
+		recordSet := recordSet{
+			Type:   "A",
+			TTL:    ttl,
+			Values: []string{myIPv4},
+		}
+		updateRecord(apiKey, domainName, recordName, recordSet)
+	} else {
+		log.Print("No IPv4 was found or set")
 	}
 
-	updateRecord(apiKey, domainName, recordName, recordSet)
+	if myIPv6 != "" {
+		recordSet := recordSet{
+			Type:   "AAAA",
+			TTL:    ttl,
+			Values: []string{myIPv6},
+		}
+		updateRecord(apiKey, domainName, recordName, recordSet)
+	} else {
+		log.Print("No IPv6 was found or set")
+	}
 }
 
-func getMyIP() string {
+func getMyIP(whatsMyIPURL string) string {
 	resp, err := http.Get(whatsMyIPURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return ""
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return ""
 	}
 	return string(body)
 }
 
+func getMyIPv4() string {
+	return getMyIP(whatsMyIPv4URL)
+}
+
+func getMyIPv6() string {
+	return getMyIP(whatsMyIPv6URL)
+}
+
 func updateRecord(apiKey string, domainName string, recordName string, recordSet recordSet) {
 	log.Printf("Updating %s.%s to %+v", recordName, domainName, recordSet)
-	url := fmt.Sprintf("https://api.gandi.net/v5/livedns/domains/%s/records/%s/%s", domainName, recordName, recordType)
+	url := fmt.Sprintf("https://api.gandi.net/v5/livedns/domains/%s/records/%s/%s", domainName, recordName, recordSet.Type)
 
 	recordBytes, err := json.Marshal(recordSet)
 	if err != nil {
@@ -90,7 +115,7 @@ func updateRecord(apiKey string, domainName string, recordName string, recordSet
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := ioutil.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}

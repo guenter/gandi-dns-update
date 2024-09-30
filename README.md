@@ -18,8 +18,10 @@ Usage of gandi-dns-update:
     	API key for Gandi LiveDNS
   -domain_name string
     	Domain name
-  -ip string
-    	IP address to set. Default is to get your public IP from Akamai (default "YOUR_IP")
+  -ip4 string
+      IPv4 address to set. Default is to get your public IP from Akamai (default "YOUR_IP")
+  -ip6 string
+      IPv6 address to set. Default is to get your public IP from Akamai (default "YOUR_IP")
   -record_name string
     	Record name
   -ttl int
